@@ -37,7 +37,9 @@ boot-task variable up \ User Pointer
 \  Round-robin list task handling - do not use in IRQ !
 \ -------------------------------------------------------
 
-: stop ( -- ) false task-state ! pause ; \ Stop current task
+: will-stop ( -- ) false task-state ! inline ; \ Stop current task at next pause
+: wont-stop ( -- ) true task-state ! inline ; \ Do not stop current task at next pause
+: stop ( -- ) will-stop pause inline ; \ Stop current task
 : multitask  ( -- ) ['] (pause) hook-pause ! ;
 : singletask ( -- ) [']  nop    hook-pause ! ;
 
@@ -51,18 +53,18 @@ boot-task variable up \ User Pointer
   until
   2drop false ;
 
-: previous ( task -- addr-of-task-before )
+: previous-task ( task -- addr-of-task-before )
   \ Find the task that has the desired one in its next field
   >r next-task begin dup @ r@ <> while @ repeat rdrop ;
 
-: insert ( task -- ) \ Insert a task into the round-robin list
+: insert-task ( task -- ) \ Insert a task into the round-robin list
   dup task-in-list?  \ Is the desired task currently linked into ?
   if drop else next-task @ over ! next-task ! then ;
 
-: remove ( task -- ) \ Remove a task from the round-robin list
+: remove-task ( task -- ) \ Remove a task from the round-robin list
   dup task-in-list?  \ Is the desired task currently linked into ?
   if dup @ ( task next )
-     swap previous ( next previous ) !
+     swap previous-task ( next previous ) !
   else drop then ;
 
 \ -----------------------------------------
@@ -88,7 +90,7 @@ boot-task variable up \ User Pointer
 \ Store the adjusted return stack pointer into the parameter stack
     !
 \ Store the desired entry address at top of the tasks return stack
-  r> insert ;
+  r> insert-task ;
 
 : activate ( task --   R: continue -- )
   true over 1 cells + ! \ Currently running
@@ -128,11 +130,12 @@ boot-task variable up \ User Pointer
     sp@ >r handler @ >r rp@ handler !  execute
     r> handler !  rdrop  0 unloop ;
 
-: throw ( throwcode -- )  dup if
-  handler @ 0= if false task-state ! then \ unhandled error: stop task
+: throw ( throwcode -- )
+  dup if
+    handler @ 0= if begin stop again then \ unhandled error: halt task
     handler @ rp! r> handler ! r> swap >r sp! drop r>
-    unloop  exit
-    else  drop  then ;
+    unloop  exit  \ jump to next handler
+  else  drop  then ;
 
 \ --------------------------------------------------
 \  Lowpower mode
