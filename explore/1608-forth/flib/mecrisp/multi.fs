@@ -40,6 +40,19 @@ boot-task variable up \ User Pointer
 : will-stop ( -- ) false task-state ! inline ; \ Stop current task at next pause
 : wont-stop ( -- ) true task-state ! inline ; \ Do not stop current task at next pause
 : stop ( -- ) will-stop pause inline ; \ Stop current task
+
+\ If your task is continued by an interrupt, you need to protect against
+\ that interrupt triggering between setting up the condition and stopping
+\ the task. Thus, assuming that your interrupt handler does this:
+\ : my-irq my-task wake ;
+\ do NOT simply do this:
+\ : wait-for-irq setup-irq stop ;
+\ because your task will hang if the interrupt arrives before calling 'stop'.
+\ Instead, do
+\ : wait-for-irq will-stop setup-irq pause ;
+\ or, if you need to wait for a specific condition (tested by "cond?"), do
+\ : wait-for-cond begin will-stop setup-irq cond? 0= while pause repeat wont-stop ;
+
 : multitask  ( -- ) ['] (pause) hook-pause ! ;
 : singletask ( -- ) [']  nop    hook-pause ! ;
 
