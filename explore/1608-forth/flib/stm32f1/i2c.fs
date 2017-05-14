@@ -174,7 +174,7 @@ $40005800 constant I2C2
   i2c-EV6a                       \ wait for completion of addressing or AF
 ;
 
-: i2c-xfer ( u -- nak) \ prepares for an nbyte reply. Use after i2c-addr. Stops i2c after completion.
+: i2c-xfer ( u -- nak ) \ prepares for reading an nbyte reply. Use after i2c-addr. Stops i2c after completion.
   dup i2c.cnt !
   i2c-EV6b
     case
@@ -189,6 +189,7 @@ $40005800 constant I2C2
         i2c-EV6                  \ wait for ADDR and clear
         i2c-ACK-0
         i2c-SR1-BTF i2c-SR1-wait \ wait for BTF
+        i2c-nak?
         i2c-stop!                \ set stop without waiting
         0 i2c.needstop !
       endof
@@ -200,11 +201,13 @@ $40005800 constant I2C2
         i2c-EV6a                   \ Wait for addr, do not clear yet
         i2c-ACK-0                  \ Disable ACK
         i2c-EV6b                   \ Clear ADDR
+        i2c-nak?
         i2c-stop!                  \ Trigger a stop
         0 i2c.needstop !
       endof
       0 of                      ( cnt = 0, probe only )
-        i2c-nak? i2c-AF-0 i2c-stop
+        i2c-nak?
+        i2c-AF-0 i2c-stop
         0 i2c.needstop !
       endof
       ( default: n > 2 )
@@ -214,6 +217,7 @@ $40005800 constant I2C2
         i2c-DR!
         i2c-EV6    \ wait until ready to read
         \ i2c-SR1-ADDR i2c-SR1-wait
+        i2c-nak?
         1 i2c.needstop !
     endcase
 ;
