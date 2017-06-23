@@ -220,7 +220,7 @@ $40005800 constant I2C2
         i2c-DR!
         i2c-EV6    \ wait until ready to read
         \ i2c-SR1-ADDR i2c-SR1-wait
-        i2c-nak?
+        i2c-nak? swap ( -- flag n )
         1 i2c.needstop !
     endcase
 ;
@@ -252,7 +252,7 @@ $40005800 constant I2C2
         \ Last byte follows normal protocol
       endof                     ( default action cnt > 3, simple receive )
       i2c-EV7    \ wait until data received
-      i2c-DR@
+      i2c-DR@ swap
       -1 i2c.cnt +!
     endcase
 
